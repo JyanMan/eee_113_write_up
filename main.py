@@ -137,18 +137,143 @@ class FirstScene(Scene):
         self.play(Create(arrow_to_react_pow), run_time=0.5)
         self.play(Create(react_pow_text), run_time=1)
 
+        the_rest = VGroup(*[
+             app_pow_formula,
+             app_pow_text,
+             impedance_formula,
+             impedance_text,
+             reactance_text,
+             arrow_to_reactance,
+             react_pow_text,
+             arrow_to_react_pow,
+             ac_text,
+         ])
+
+        self.play(FadeOut(the_rest))
+
         
 class SecondScene(Scene):
     def construct(self):
-        ac_title = Text("AC", color=MAROON_B, font_size=40).move_to([-3, 2.5, 0])
-        self.add(ac_title)
-        self.wait(2)
-        # now to see why this is the case, lets first look at reactance
-        # reactance can either be capacitance due to a capacitative load
+        # now to see why this is the case,
+        impedance_formula = MathTex(r"Z = R + jX", substrings_to_isolate="X", font_size=60)
+        self.play(Create(impedance_formula), run_time=0.8)
+
+        # lets first look at reactance
+        jx_highlighted = impedance_formula.copy()
+        jx_highlighted.set_color_by_tex("X", BLUE)
+        self.play(Transform(impedance_formula, jx_highlighted), run_time=0.5)
+        reactance_text = Text("Reactance", font_size=50, color=BLUE).move_to(RIGHT*2)
+        self.play(
+            impedance_formula.animate().shift(LEFT*2),
+            run_time=0.25
+        )
+        self.play(Create(reactance_text), run_time=0.25) 
+
+        # reactance can either be
+        edged_formula = impedance_formula.copy().to_edge(LEFT).to_edge(UP)
+        self.play(
+            Transform(impedance_formula, edged_formula),
+            Transform(reactance_text, reactance_text.copy().move_to(UP * 2))
+        )
+
+        # capacitance due to a capacitative load
+        capacitance_text = Text("Capacitance", font_size=40, color=RED_A).move_to(LEFT*2).shift(DOWN)
+        arrow_to_capacitance = Arrow(
+             reactance_text.get_center(), capacitance_text.get_center(), color=BLUE_A, buff=MED_LARGE_BUFF)
+        self.play(Create(arrow_to_capacitance), run_time=0.5)
+        self.play(Create(capacitance_text), run_time=0.5)
+
         # or inductance due to an inductive load
-        # in ac, capacitative loads smoothens the change in voltage,
-        # delaying the peak amplitude of the voltage
-        # this can be described as the current leading the voltage
+        inductance_text = Text("Inductance", font_size=40, color=GREEN_A).move_to(RIGHT*2).shift(DOWN)
+        arrow_to_inductance = Arrow(
+            reactance_text.get_center(), inductance_text.get_center(), color=BLUE_A, buff=MED_LARGE_BUFF)
+        self.play(Create(arrow_to_inductance), run_time=0.5)
+        self.play(Create(inductance_text), run_time=0.5)
+
+        
+        all = VGroup(*[
+            impedance_formula,
+            reactance_text,
+            arrow_to_capacitance,
+            arrow_to_inductance,
+            capacitance_text,
+            inductance_text
+        ])
+        self.play(FadeOut(all), run_time=0.5)
+
+
+class CapacitanceIllustration(Scene):
+    def construct(self):
+        # in ac,
+        axes = Axes(
+            x_range=[0, 10, 1],
+            y_range=[-1.5, 1.5, 0.5],
+            axis_config={"color": BLUE}
+        )
+
+        volt_wave = axes.plot(lambda x: np.sin(x), color=YELLOW)
+        curr_wave = axes.plot(lambda x: np.sin(x), color=GREEN)
+
+        self.play(Create(axes), run_time=1)
+        self.play(
+            Create(curr_wave),
+            Create(volt_wave),
+            run_time=2
+        )
+
+        v_text = Text("V", font_size=30, color=YELLOW).move_to(LEFT*3).shift(UP*1.5)
+        i_text = Text("I", font_size=30, color=GREEN).move_to(LEFT*2.5).shift(UP)
+        self.play(Create(v_text), Create(i_text), run_time=0.5)
+
+        # capacitative loads
+        capacitance_text = Text("Capacitance").to_edge(UP).to_edge(LEFT)
+        self.play(Create(capacitance_text))
+
+        # smoothen the change in voltage
+        shifted_volt_wave= axes.plot(lambda x: np.sin(x+5), color=YELLOW)
+        self.play(
+            Transform(volt_wave, shifted_volt_wave),
+            v_text.animate().shift(RIGHT*1.5),
+            run_time=1.5
+        )
+
+        self.play(
+            axes.animate().scale(2).shift(RIGHT*7).shift(DOWN*3),
+            volt_wave.animate().scale(2).shift(RIGHT*7).shift(DOWN*3),
+            curr_wave.animate().scale(2).shift(RIGHT*7).shift(DOWN*3),
+            v_text.animate().shift(RIGHT*7).shift(DOWN*3),
+            i_text.animate().shift(RIGHT*5).shift(DOWN*3)
+        )
+
+        # delaying the its peak amplitude compared to the current
+        # this distance between their peaks 
+        start_arrow = Rectangle(width=0.1, height=0.5, color=MAROON_A, fill_opacity=1).move_to([-1.2, 1.5, 0])
+        end_arrow = Rectangle(width=0.1, height=0.5, color=MAROON_A, fill_opacity=1).move_to([1.8, 1.5, 0])
+        arrow_phase = Arrow(
+            buff=0,
+            max_tip_length_to_length_ratio=0,
+            start=start_arrow.get_center(),
+            end=end_arrow.get_center(),
+            color=MAROON_A,
+            tip_shape=ArrowSquareTip
+        )
+        self.play(Create(start_arrow), run_time=0.2, lag_ratio=0.5)
+        self.play(Create(arrow_phase), lag_ratio=0)
+        self.play(Create(end_arrow), run_time=0.4)
+
+        # is known as phase shift 
+        phase_shift_text = (Text("phase shift", font_size=35, color=MAROON_A)
+            .move_to(UP*2).shift(RIGHT*0.3))
+        self.play(Create(phase_shift_text))
+
+        # this can then be described as the current leading the voltage
+        # although the voltage seems to be ahead, it is actually delayed
+        # note that the x axis does not refer to time, but to the phase...
+        # with this phase... we can see why we use the complex plane...
+        # instead of using trigonometric identities... we can illustrate them as phase vectors
+        # or phasors...
+        # in ac... with consideration to phase... V / I now refers to the impedance
+
 
 def main():
     print("Hello from write-up!")
